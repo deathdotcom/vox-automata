@@ -173,7 +173,7 @@ function simulateVoteCalculation(
   return baseScore + (randomFactor * (1 - persuadability))
 }
 
-export async function runFullElection(taskId: string): Promise<{ electionId: string; winnerPartyId: string }> {
+export async function runFullElection(taskId: string): Promise<{ electionId: string; winnerPartyId: string; details?: Record<string, unknown> }> {
   const election = await createElection(taskId)
   const agents = await getAllAgents()
   const parties = await getAllParties()
