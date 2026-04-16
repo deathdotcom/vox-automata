@@ -230,19 +230,55 @@ export async function runFullElection(taskId: string): Promise<{ electionId: str
   await updateTaskStatus(taskId, 'execution')
   await new Promise(resolve => setTimeout(resolve, PHASE_DURATION_MS))
 
+  const results = await getElectionResults(election.id)
+  const votes = await getVotesByElection(election.id)
+  
+  const agentVotes: { agentId: string; agentName: string; ideology: string; votedFor: string }[] = []
+  for (const vote of votes) {
+    const agent = agents.find(a => a.id === vote.agent_id)
+    const party = parties.find(p => p.id === vote.party_id)
+    agentVotes.push({
+      agentId: vote.agent_id,
+      agentName: agent?.name ?? 'Unknown',
+      ideology: (agent?.ideology as Record<string, unknown>)?.name as string ?? 'Unknown',
+      votedFor: party?.name ?? 'Unknown',
+    })
+  }
+
   const winnerPartyId = await tallyVotes(election.id)
   if (!winnerPartyId) throw new Error('No winner determined')
 
+  const winningParty = parties.find(p => p.id === winnerPartyId)
+  const winnerName = winningParty?.name ?? 'Unknown'
+
   const result = {
     winner: winnerPartyId,
+    winnerName: winnerName,
     totalVotes: agents.filter(a => a.party_id).length,
+    voteBreakdown: results.map(r => {
+      const party = parties.find(p => p.id === r.partyId)
+      return {
+        partyId: r.partyId,
+        partyName: party?.name ?? 'Unknown',
+        votes: r.votes,
+        percentage: Math.round((r.votes / agents.filter(a => a.party_id).length) * 100),
+      }
+    }),
+    agentVotes,
     timestamp: new Date().toISOString(),
   }
 
-  await completeTask(taskId, result, { winner: winnerPartyId })
+  await completeTask(taskId, result, { 
+    winner: winnerPartyId,
+    voteBreakdown: result.voteBreakdown,
+  })
   await updateTaskStatus(taskId, 'completed')
 
-  return { electionId: election.id, winnerPartyId }
+  return { 
+    electionId: election.id, 
+    winnerPartyId,
+    details: result,
+  }
 }
 
 export async function getActiveElection(): Promise<Election | null> {

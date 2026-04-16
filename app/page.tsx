@@ -23,11 +23,20 @@ interface Party {
   approval_rating: number
 }
 
+interface ElectionResult {
+  winner: string
+  winnerName: string
+  totalVotes: number
+  voteBreakdown: { partyId: string; partyName: string; votes: number; percentage: number }[]
+  agentVotes: { agentId: string; agentName: string; ideology: string; votedFor: string }[]
+  timestamp: string
+}
+
 interface Task {
   id: string
   description: string
   status: string
-  result: Record<string, unknown> | null
+  result: ElectionResult | null
   created_at: string
 }
 
@@ -418,33 +427,76 @@ export default function Dashboard() {
 
       {view === 'elections' && (
         <div className="section">
-          <h3 className="section-title"><span>▸</span> Elections</h3>
-          <div className="card">
-            <div className="election-status">
-              <div className={`status-indicator ${data.activeElection ? 'active' : 'pending'}`} />
-              <span className="status-text">
-                {data.activeElection 
-                  ? `Active Election - ${getStatusLabel(data.activeElection.status)}`
-                  : 'No active election'}
-              </span>
+          <h3 className="section-title"><span>▸</span> Election Results</h3>
+          
+          {data.tasks.filter(t => t.result && t.status === 'completed').length === 0 ? (
+            <div className="card">
+              <div className="empty-state">No completed elections yet. Run an election to see results.</div>
             </div>
-            {data.activeElection && (
-              <div style={{ marginTop: '16px' }}>
-                <div className="stat-row">
-                  <span className="stat-label">Election ID</span>
-                  <span className="stat-value">{data.activeElection.id}</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Task ID</span>
-                  <span className="stat-value">{data.activeElection.task_id.slice(0, 8)}...</span>
-                </div>
-                <div className="stat-row">
-                  <span className="stat-label">Winner</span>
-                  <span className="stat-value">{data.activeElection.winner_id || 'TBD'}</span>
-                </div>
-              </div>
-            )}
-          </div>
+          ) : (
+            data.tasks
+              .filter(t => t.result && t.status === 'completed')
+              .map(task => {
+                const result = task.result as ElectionResult
+                return (
+                  <div key={task.id} className="card" style={{ marginBottom: '24px' }}>
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Task</div>
+                      <div style={{ fontSize: '16px', fontWeight: 600 }}>{task.description}</div>
+                    </div>
+                    
+                    <div style={{ 
+                      background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-blue))', 
+                      padding: '16px', 
+                      borderRadius: '12px', 
+                      marginBottom: '16px' 
+                    }}>
+                      <div style={{ fontSize: '12px', opacity: 0.8 }}>Winner</div>
+                      <div style={{ fontSize: '24px', fontWeight: 700 }}>{result.winnerName}</div>
+                      <div style={{ fontSize: '14px', opacity: 0.9 }}>{result.totalVotes} votes cast</div>
+                    </div>
+
+                    <div style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Vote Breakdown</div>
+                      {result.voteBreakdown.map(party => (
+                        <div key={party.partyId} style={{ marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                            <span style={{ fontSize: '14px' }}>{party.partyName}</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600 }}>{party.votes} votes ({party.percentage}%)</span>
+                          </div>
+                          <div style={{ background: 'var(--bg-tertiary)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ 
+                              width: `${party.percentage}%`, 
+                              height: '100%', 
+                              background: PARTY_COLORS[party.partyName] || 'var(--accent-blue)',
+                              borderRadius: '4px',
+                            }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Individual Votes</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {result.agentVotes.map(av => (
+                          <div key={av.agentId} style={{ 
+                            background: 'var(--bg-tertiary)', 
+                            padding: '8px 12px', 
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                          }}>
+                            <div style={{ fontWeight: 600 }}>{av.agentName}</div>
+                            <div style={{ color: 'var(--text-muted)' }}>Ideology: {av.ideology}</div>
+                            <div style={{ color: PARTY_COLORS[av.votedFor] || 'var(--text-secondary)' }}>→ {av.votedFor}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+          )}
         </div>
       )}
     </div>

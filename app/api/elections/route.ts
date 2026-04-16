@@ -54,6 +54,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'taskId is required' }, { status: 400 })
   } catch (error) {
+    console.error('Election error:', error)
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
 }
