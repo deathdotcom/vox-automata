@@ -438,6 +438,7 @@ export default function Dashboard() {
               .filter(t => t.result && t.status === 'completed')
               .map(task => {
                 const result = task.result as ElectionResult
+                const hasDetails = result && result.voteBreakdown && result.agentVotes
                 return (
                   <div key={task.id} className="card" style={{ marginBottom: '24px' }}>
                     <div style={{ marginBottom: '16px' }}>
@@ -445,54 +446,63 @@ export default function Dashboard() {
                       <div style={{ fontSize: '16px', fontWeight: 600 }}>{task.description}</div>
                     </div>
                     
-                    <div style={{ 
-                      background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-blue))', 
-                      padding: '16px', 
-                      borderRadius: '12px', 
-                      marginBottom: '16px' 
-                    }}>
-                      <div style={{ fontSize: '12px', opacity: 0.8 }}>Winner</div>
-                      <div style={{ fontSize: '24px', fontWeight: 700 }}>{result.winnerName}</div>
-                      <div style={{ fontSize: '14px', opacity: 0.9 }}>{result.totalVotes} votes cast</div>
-                    </div>
+                    {hasDetails ? (
+                      <>
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, var(--accent-purple), var(--accent-blue))', 
+                          padding: '16px', 
+                          borderRadius: '12px', 
+                          marginBottom: '16px' 
+                        }}>
+                          <div style={{ fontSize: '12px', opacity: 0.8 }}>Winner</div>
+                          <div style={{ fontSize: '24px', fontWeight: 700 }}>{result.winnerName || 'Unknown'}</div>
+                          <div style={{ fontSize: '14px', opacity: 0.9 }}>{result.totalVotes} votes cast</div>
+                        </div>
 
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Vote Breakdown</div>
-                      {result.voteBreakdown.map(party => (
-                        <div key={party.partyId} style={{ marginBottom: '8px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                            <span style={{ fontSize: '14px' }}>{party.partyName}</span>
-                            <span style={{ fontSize: '14px', fontWeight: 600 }}>{party.votes} votes ({party.percentage}%)</span>
-                          </div>
-                          <div style={{ background: 'var(--bg-tertiary)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ 
-                              width: `${party.percentage}%`, 
-                              height: '100%', 
-                              background: PARTY_COLORS[party.partyName] || 'var(--accent-blue)',
-                              borderRadius: '4px',
-                            }} />
+                        <div style={{ marginBottom: '16px' }}>
+                          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Vote Breakdown</div>
+                          {result.voteBreakdown?.map((party: any) => (
+                            <div key={party.partyId} style={{ marginBottom: '8px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '14px' }}>{party.partyName}</span>
+                                <span style={{ fontSize: '14px', fontWeight: 600 }}>{party.votes} votes ({party.percentage}%)</span>
+                              </div>
+                              <div style={{ background: 'var(--bg-tertiary)', height: '8px', borderRadius: '4px', overflow: 'hidden' }}>
+                                <div style={{ 
+                                  width: `${party.percentage}%`, 
+                                  height: '100%', 
+                                  background: PARTY_COLORS[party.partyName] || 'var(--accent-blue)',
+                                  borderRadius: '4px',
+                                }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div>
+                          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Individual Votes</div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {result.agentVotes?.map((av: any) => (
+                              <div key={av.agentId} style={{ 
+                                background: 'var(--bg-tertiary)', 
+                                padding: '8px 12px', 
+                                borderRadius: '8px',
+                                fontSize: '12px',
+                              }}>
+                                <div style={{ fontWeight: 600 }}>{av.agentName}</div>
+                                <div style={{ color: 'var(--text-muted)' }}>Ideology: {av.ideology}</div>
+                                <div style={{ color: PARTY_COLORS[av.votedFor] || 'var(--text-secondary)' }}>→ {av.votedFor}</div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      ))}
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Individual Votes</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                        {result.agentVotes.map(av => (
-                          <div key={av.agentId} style={{ 
-                            background: 'var(--bg-tertiary)', 
-                            padding: '8px 12px', 
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                          }}>
-                            <div style={{ fontWeight: 600 }}>{av.agentName}</div>
-                            <div style={{ color: 'var(--text-muted)' }}>Ideology: {av.ideology}</div>
-                            <div style={{ color: PARTY_COLORS[av.votedFor] || 'var(--text-secondary)' }}>→ {av.votedFor}</div>
-                          </div>
-                        ))}
+                      </>
+                    ) : (
+                      <div style={{ padding: '16px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600 }}>Winner: {result?.winner || 'Unknown'}</div>
+                        <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Basic result (no vote details)</div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )
               })
