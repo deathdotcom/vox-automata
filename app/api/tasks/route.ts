@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createTask, getAllTasks, getTaskById, getLatestTask, getTaskMetrics } from '@/lib/engine/tasks'
+import { createTask, getAllTasks, getTaskById, getLatestTask, getTaskMetrics, updateTaskStatus, failTask } from '@/lib/engine/tasks'
 
 export async function GET(request: Request) {
   try {
@@ -34,6 +34,27 @@ export async function POST(request: Request) {
 
     const task = await createTask(description)
     return NextResponse.json(task, { status: 201 })
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json()
+    const { id, status, error } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'id is required' }, { status: 400 })
+    }
+
+    if (status === 'failed' && error) {
+      await failTask(id, error)
+    } else if (status) {
+      await updateTaskStatus(id, status as any)
+    }
+
+    return NextResponse.json({ success: true })
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
