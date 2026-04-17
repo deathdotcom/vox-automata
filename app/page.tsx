@@ -29,6 +29,11 @@ interface ElectionResult {
   totalVotes: number
   voteBreakdown: { partyId: string; partyName: string; votes: number; percentage: number }[]
   agentVotes: { agentId: string; agentName: string; ideology: string; votedFor: string }[]
+  debateSummary?: {
+    totalArguments: number
+    byPosition: { support: number; oppose: number; amend: number; question: number }
+    byParty: { partyId: string; partyName: string; count: number }[]
+  }
   timestamp: string
 }
 
@@ -48,11 +53,23 @@ interface Election {
   created_at: string
 }
 
+interface DebateArgument {
+  id: string
+  election_id: string
+  agent_id: string
+  party_id: string | null
+  position: 'support' | 'oppose' | 'amend' | 'question'
+  content: string
+  created_at: string
+}
+
 interface DashboardData {
   agents: Agent[]
   parties: Party[]
   tasks: Task[]
   activeElection: Election | null
+  activeArguments: DebateArgument[]
+  debateSummary: { totalArguments: number; byPosition: Record<string, number>; byParty: { partyId: string; partyName: string; count: number }[] } | null
 }
 
 const PARTY_COLORS: Record<string, string> = {
@@ -65,7 +82,7 @@ const PARTY_COLORS: Record<string, string> = {
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
-  const [data, setData] = useState<DashboardData>({ agents: [], parties: [], tasks: [], activeElection: null })
+  const [data, setData] = useState<DashboardData>({ agents: [], parties: [], tasks: [], activeElection: null, activeArguments: [], debateSummary: null })
   const [newTaskDesc, setNewTaskDesc] = useState('')
   const [spawnCount, setSpawnCount] = useState(1)
   const [error, setError] = useState('')
@@ -78,14 +95,18 @@ export default function Dashboard() {
         fetch('/api/agents'),
         fetch('/api/parties'),
         fetch('/api/tasks'),
-        fetch('/api/elections?action=active'),
+        fetch('/api/elections?action=active&includeArguments=true'),
       ])
       const agents = await agentsRes.json()
       const parties = await partiesRes.json()
       const tasks = await tasksRes.json()
-      const activeElection = await electionRes.json()
+      const electionData = await electionRes.json()
+      
+      const activeElection = electionData?.election || null
+      const activeArguments = electionData?.arguments || []
+      const debateSummary = electionData?.summary || null
 
-      setData({ agents, parties, tasks, activeElection })
+      setData({ agents, parties, tasks, activeElection, activeArguments, debateSummary })
       setLoading(false)
     } catch (err) {
       setError('Failed to load dashboard data')
@@ -95,7 +116,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 5000)
+    const interval = setInterval(fetchData, 2000)
     return () => clearInterval(interval)
   }, [])
 
@@ -165,6 +186,15 @@ export default function Dashboard() {
       setError('Failed to run election')
     }
   }
+
+  const ELECTION_PHASES = [
+    { key: 'announcement', label: '📢 Announcement', icon: '📢' },
+    { key: 'platforms', label: '📜 Party Platforms', icon: '📜' },
+    { key: 'debate', label: '🎤 Debate', icon: '🎤' },
+    { key: 'campaigning', label: '📣 Campaigning', icon: '📣' },
+    { key: 'voting', label: '🗳️ Voting', icon: '🗳️' },
+    { key: 'execution', label: '⚙️ Execution', icon: '⚙️' },
+  ]
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -338,6 +368,158 @@ export default function Dashboard() {
                   <span className="status-text">{getStatusLabel(data.activeElection.status)}</span>
                 </div>
               </div>
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  {ELECTION_PHASES.map((phase, idx) => {
+                    const currentIdx = ELECTION_PHASES.findIndex(p => p.key === data.activeElection?.status)
+                    const isActive = idx === currentIdx
+                    const isPast = idx < currentIdx
+                    return (
+                      <div key={phase.key} style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center',
+                        flex: 1,
+                      }}>
+                        <div style={{ 
+                          width: '32px', 
+                          height: '32px', 
+                          borderRadius: '50%', 
+                          background: isActive ? 'var(--accent-blue)' : isPast ? 'var(--accent-green)' : 'var(--bg-tertiary)',
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          fontSize: '14px',
+                          boxShadow: isActive ? '0 0 12px var(--accent-blue)' : 'none',
+                          transition: 'all 0.3s ease',
+                        }}>
+                          {isPast ? '✓' : phase.icon}
+                        </div>
+                        <div style={{ 
+                          fontSize: '10px', 
+                          marginTop: '4px', 
+                          color: isActive ? 'var(--accent-blue)' : 'var(--text-muted)',
+                          fontWeight: isActive ? 600 : 400,
+                          textAlign: 'center',
+                        }}>
+                          {phase.key}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                {data.activeElection.status === 'voting' && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, var(--accent-blue), var(--accent-purple))',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>Agents are voting now!</div>
+                    <div style={{ fontSize: '24px', fontWeight: 700, marginTop: '8px' }}>🗳️ Cast Your Vote</div>
+                  </div>
+                )}
+                {data.activeElection.status === 'debate' && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, #ef4444, #f97316)',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>Parties are debating!</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '8px' }}>🎤 Heated Arguments</div>
+                  </div>
+                )}
+                {data.activeElection.status === 'campaigning' && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, #8b5cf6, #a855f7)',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>Parties campaigning for votes!</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '8px' }}>📣 Make Your Case</div>
+                  </div>
+                )}
+                {data.activeElection.status === 'announcement' && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>New election announced!</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '8px' }}>📢 Election Begins</div>
+                  </div>
+                )}
+                {data.activeElection.status === 'platforms' && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, #10b981, #14b8a6)',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>Parties presenting their platforms!</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '8px' }}>📜 Party Platforms</div>
+                  </div>
+                )}
+                {data.activeElection.status === 'execution' && (
+                  <div style={{ 
+                    marginTop: '16px', 
+                    padding: '16px', 
+                    background: 'linear-gradient(135deg, #f59e0b, #eab308)',
+                    borderRadius: '12px',
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: '14px', opacity: 0.9 }}>Winner executing task!</div>
+                    <div style={{ fontSize: '20px', fontWeight: 700, marginTop: '8px' }}>⚙️ Task Execution</div>
+                  </div>
+                )}
+              </div>
+              {data.activeArguments.length > 0 && (
+                <div style={{ marginTop: '16px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                    📢 Live Debate ({data.activeArguments.length} arguments)
+                  </div>
+                  <div style={{ 
+                    maxHeight: '200px', 
+                    overflowY: 'auto', 
+                    background: 'var(--bg-tertiary)', 
+                    borderRadius: '8px',
+                    padding: '12px',
+                  }}>
+                    {data.activeArguments.slice(-10).reverse().map(arg => {
+                      const agent = data.agents.find(a => a.id === arg.agent_id)
+                      const party = data.parties.find(p => p.id === arg.party_id)
+                      const positionIcons: Record<string, string> = {
+                        support: '👍',
+                        oppose: '👎',
+                        question: '❓',
+                        amend: '✏️',
+                      }
+                      return (
+                        <div key={arg.id} style={{ 
+                          marginBottom: '8px', 
+                          padding: '8px', 
+                          background: 'var(--bg-secondary)', 
+                          borderRadius: '6px',
+                          borderLeft: `3px solid ${PARTY_COLORS[party?.name || ''] || 'var(--accent-blue)'}`,
+                        }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                            {positionIcons[arg.position]} <strong>{agent?.name || 'Unknown'}</strong> ({party?.name || 'Unknown'})
+                          </div>
+                          <div style={{ fontSize: '12px', marginTop: '4px' }}>{arg.content}</div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
@@ -405,21 +587,55 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="party-list">
-            {data.tasks.map(task => (
-              <div key={task.id} className="party-item">
-                <div className="party-color" style={{ 
-                  background: task.status === 'completed' ? 'var(--accent-green)' : 
-                             task.status === 'failed' ? 'var(--accent-red)' : 'var(--accent-yellow)' 
-                }} />
-                <div className="party-info">
-                  <div className="party-name">{task.description}</div>
-                  <div className="party-tagline">ID: {task.id.slice(0, 8)}</div>
+            {data.tasks.map(task => {
+              const isCompleted = task.status === 'completed'
+              return (
+                <div key={task.id} className="party-item">
+                  <div className="party-color" style={{ 
+                    background: task.status === 'completed' ? 'var(--accent-green)' : 
+                               task.status === 'failed' ? 'var(--accent-red)' : 'var(--accent-yellow)' 
+                  }} />
+                  <div className="party-info">
+                    <div className="party-name">{task.description}</div>
+                    <div className="party-tagline">ID: {task.id.slice(0, 8)}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ padding: '4px 12px', borderRadius: '12px', background: 'var(--bg-tertiary)', fontSize: '12px' }}>
+                      {getStatusLabel(task.status)}
+                    </span>
+                    {isCompleted && (
+                      <button 
+                        onClick={async () => {
+                          setError('')
+                          setSuccess('')
+                          try {
+                            await fetch('/api/elections', {
+                              method: 'POST',
+                              body: JSON.stringify({ taskId: task.id, runElection: true }),
+                            })
+                            setSuccess(`Re-elected for: ${task.description.slice(0, 30)}...`)
+                            fetchData()
+                          } catch (err) {
+                            setError('Failed to rerun election')
+                          }
+                        }}
+                        style={{ 
+                          padding: '4px 8px', 
+                          borderRadius: '4px', 
+                          background: 'var(--accent-blue)', 
+                          color: 'white',
+                          fontSize: '11px',
+                          border: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🔄 Rerun
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <span style={{ padding: '4px 12px', borderRadius: '12px', background: 'var(--bg-tertiary)', fontSize: '12px' }}>
-                  {getStatusLabel(task.status)}
-                </span>
-              </div>
-            ))}
+              )
+            })}
             {taskCount === 0 && <div className="empty-state">No tasks yet</div>}
           </div>
         </div>
@@ -478,6 +694,23 @@ export default function Dashboard() {
                             </div>
                           ))}
                         </div>
+
+                        {result.debateSummary && (
+                          <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Debate Activity</div>
+                            <div style={{ background: 'var(--bg-tertiary)', padding: '12px', borderRadius: '8px' }}>
+                              <div style={{ fontSize: '12px', marginBottom: '8px' }}>
+                                <span style={{ color: 'var(--accent-green)' }}>✓</span> {result.debateSummary.totalArguments} arguments made
+                              </div>
+                              <div style={{ display: 'flex', gap: '12px', fontSize: '12px' }}>
+                                <span>👍 {result.debateSummary.byPosition?.support || 0}</span>
+                                <span>👎 {result.debateSummary.byPosition?.oppose || 0}</span>
+                                <span>❓ {result.debateSummary.byPosition?.question || 0}</span>
+                                <span>✏️ {result.debateSummary.byPosition?.amend || 0}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div>
                           <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Individual Votes</div>

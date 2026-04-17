@@ -65,12 +65,27 @@ CREATE TABLE votes (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- ARGUMENTS: Debate arguments during elections
+CREATE TABLE arguments (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  election_id UUID REFERENCES elections(id),
+  agent_id UUID REFERENCES agents(id),
+  proposal_id UUID,
+  party_id UUID REFERENCES parties(id),
+  position TEXT NOT NULL CHECK (position IN ('support', 'oppose', 'amend', 'question')),
+  content TEXT NOT NULL,
+  target_agent_id UUID REFERENCES agents(id),
+  target_party_id UUID REFERENCES parties(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- RLS Policies
 ALTER TABLE agents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE parties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE elections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE votes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE arguments ENABLE ROW LEVEL SECURITY;
 
 -- Allow all operations for now (can be tightened later)
 CREATE POLICY "Allow all for agents" ON agents FOR ALL USING (true);
@@ -78,6 +93,7 @@ CREATE POLICY "Allow all for parties" ON parties FOR ALL USING (true);
 CREATE POLICY "Allow all for tasks" ON tasks FOR ALL USING (true);
 CREATE POLICY "Allow all for elections" ON elections FOR ALL USING (true);
 CREATE POLICY "Allow all for votes" ON votes FOR ALL USING (true);
+CREATE POLICY "Allow all for arguments" ON arguments FOR ALL USING (true);
 
 -- Indexes for performance
 CREATE INDEX idx_agents_party ON agents(party_id);
@@ -86,6 +102,9 @@ CREATE INDEX idx_elections_status ON elections(status);
 CREATE INDEX idx_votes_election ON votes(election_id);
 CREATE INDEX idx_votes_agent ON votes(agent_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE INDEX idx_arguments_election ON arguments(election_id);
+CREATE INDEX idx_arguments_agent ON arguments(agent_id);
+CREATE INDEX idx_arguments_proposal ON arguments(proposal_id);
 
 -- RPC Functions for atomic counter updates
 CREATE OR REPLACE FUNCTION increment_party_member_count(party_id UUID)

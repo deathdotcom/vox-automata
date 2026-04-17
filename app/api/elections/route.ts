@@ -8,15 +8,24 @@ import {
   getElectionHistory,
   getElectionResults 
 } from '@/lib/engine/elections'
+import { getArgumentsByElection, getDebateSummary } from '@/lib/engine/arguments'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     const taskId = searchParams.get('taskId')
+    const includeArguments = searchParams.get('includeArguments')
 
     if (action === 'active') {
       const election = await getActiveElection()
+      
+      if (election && includeArguments === 'true') {
+        const arguments_ = await getArgumentsByElection(election.id)
+        const summary = await getDebateSummary(election.id)
+        return NextResponse.json({ election, arguments: arguments_, summary })
+      }
+      
       return NextResponse.json(election)
     }
 

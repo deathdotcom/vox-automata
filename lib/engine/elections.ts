@@ -1,7 +1,8 @@
 import { getSupabase, Database } from '../supabase'
 import { getAllAgents } from './agents'
 import { getAllParties } from './parties'
-import { completeTask, updateTaskStatus, TaskStatus } from './tasks'
+import { completeTask, updateTaskStatus, TaskStatus, getTaskById } from './tasks'
+import { runDebatePhase, getDebateSummary } from './arguments'
 
 type Election = Database['public']['Tables']['elections']['Row']
 type ElectionInsert = Database['public']['Tables']['elections']['Insert']
@@ -13,7 +14,7 @@ function getClient() {
   return getSupabase()
 }
 
-const PHASE_DURATION_MS = 2000
+const PHASE_DURATION_MS = 5000
 
 export async function createElection(taskId: string): Promise<Election> {
   const electionData: ElectionInsert = {
@@ -191,6 +192,11 @@ export async function runFullElection(taskId: string): Promise<{ electionId: str
 
   await updateTaskStatus(taskId, 'debate')
   await updateElectionStatus(election.id, 'debate')
+
+  const task = await getTaskById(taskId)
+  const debateSummary = await runDebatePhase(election.id, task?.description ?? '')
+  const debateStats = await getDebateSummary(election.id)
+
   await new Promise(resolve => setTimeout(resolve, PHASE_DURATION_MS))
 
   await updateTaskStatus(taskId, 'campaigning')
@@ -265,12 +271,18 @@ export async function runFullElection(taskId: string): Promise<{ electionId: str
       }
     }),
     agentVotes,
+    debateSummary: {
+      totalArguments: debateStats.totalArguments,
+      byPosition: debateStats.byPosition,
+      byParty: debateStats.byParty,
+    },
     timestamp: new Date().toISOString(),
   }
 
   await completeTask(taskId, result, { 
     winner: winnerPartyId,
     voteBreakdown: result.voteBreakdown,
+    debateStats: debateStats,
   })
   await updateTaskStatus(taskId, 'completed')
 

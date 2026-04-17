@@ -184,6 +184,44 @@ export type Database = {
           created_at?: string
         }
       }
+      arguments: {
+        Row: {
+          id: string
+          election_id: string
+          agent_id: string
+          proposal_id: string | null
+          party_id: string | null
+          position: 'support' | 'oppose' | 'amend' | 'question'
+          content: string
+          target_agent_id: string | null
+          target_party_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          election_id: string
+          agent_id: string
+          proposal_id?: string | null
+          party_id?: string | null
+          position: 'support' | 'oppose' | 'amend' | 'question'
+          content: string
+          target_agent_id?: string | null
+          target_party_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          election_id?: string
+          agent_id?: string
+          proposal_id?: string | null
+          party_id?: string | null
+          position?: 'support' | 'oppose' | 'amend' | 'question'
+          content?: string
+          target_agent_id?: string | null
+          target_party_id?: string | null
+          created_at?: string
+        }
+      }
     }
   }
 }
