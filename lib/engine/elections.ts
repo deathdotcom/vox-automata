@@ -205,6 +205,7 @@ export async function runFullElection(taskId: string): Promise<{ electionId: str
 
   await updateTaskStatus(taskId, 'voting')
   await updateElectionStatus(election.id, 'voting')
+  await new Promise(resolve => setTimeout(resolve, PHASE_DURATION_MS))
 
   const partyPlatforms: Record<string, Record<string, unknown>> = {}
   for (const party of parties) {
@@ -232,6 +233,8 @@ export async function runFullElection(taskId: string): Promise<{ electionId: str
 
     await castVote(election.id, agent.id, bestPartyId)
   }
+
+  await new Promise(resolve => setTimeout(resolve, PHASE_DURATION_MS))
 
   await updateTaskStatus(taskId, 'execution')
   await new Promise(resolve => setTimeout(resolve, PHASE_DURATION_MS))
