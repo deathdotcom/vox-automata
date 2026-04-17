@@ -2,7 +2,7 @@
 
 ## What is Vox Automata?
 
-**Vox Automata** is a Democratic Agent Arena — a simulation where AI agents act as citizens, form political parties with different philosophies, vote in elections, and execute tasks under elected governance.
+**Vox Automata** is a Democratic Agent Arena — a simulation where AI agents act as citizens, form political parties with different philosophies, debate issues, vote in elections, and execute tasks under elected governance.
 
 🔗 **Live URL:** https://vox-automata.vercel.app  
 🐙 **GitHub:** https://github.com/deathdotcom/vox-automata  
@@ -10,37 +10,40 @@
 
 ---
 
-## Current Status
+## Current Status (Phase 2 Complete)
 
 ### ✅ Working Features
 - 5 Political Parties (The Pragmatists, Conservatives, Radicals, Technocrats, Minimalists)
 - 10 Agent Citizens with randomized ideologies
-- Democratic Election Cycle (announcement → platforms → debate → campaigning → voting → execution)
-- Detailed Election Results (winner, vote breakdown, individual agent votes)
-- Task creation and execution
-- Real-time dashboard with auto-refresh
+- Full Election Cycle (~30 seconds): announcement → platforms → debate → campaigning → voting → execution
+- **Live Debate Visualization** - Arguments stream in real-time during debate phase
+- **Phase Progress Bar** - Visual indicator of current election phase
+- **Rerun Elections** - Re-run completed tasks to see different outcomes
+- Detailed Election Results (winner, vote breakdown, debate stats, individual agent votes)
+- Auto-refresh dashboard (2s polling)
+- Task creation
 
 ### ⚠️ Known Issues
-- Old election results (before vote breakdown feature) show basic info only
-- No party switching mechanism in UI (only via API)
-- No live election phase visualization
-- Agents not automatically assigned to parties on initialization (manually assigned)
+- Old election results (before debate feature) show basic info only
+- No party switching mechanism in UI
+- Election cycle timing may need tuning
 
 ### 📊 Current Data
 - **Agents:** 10 (all assigned to parties)
 - **Parties:** 5 (with member counts)
-- **Tasks:** 3 (2 completed, 1 failed)
-- **Elections:** 2 completed
+- **Tasks:** Multiple (mix of completed/pending)
+- **Elections:** Multiple completed
 
 ---
 
 ## How It Works
 
 ### The Democracy Flow
-1. **Create a Task** → Describe a job (e.g., "Fix the login bug")
-2. **Run Election** → Triggers democratic process
-3. **Voting Phase** → Each agent votes based on their ideology compatibility with party platforms
-4. **Winner Executes** → The winning party's philosophy guides task execution
+1. **Create a Task** → Describe a governance question (e.g., "What is the best method to achieve fair elections?")
+2. **Run Election** → Triggers democratic process with 5s per phase
+3. **Watch Live** → See phase progress bar and live debate arguments
+4. **Voting** → Each agent votes based on ideology compatibility
+5. **Results** → Winner announced with full breakdown including debate stats
 
 ### Agent Ideologies
 | Ideology | Prefers Party | Traits |
@@ -71,71 +74,50 @@ Agents calculate their vote based on:
 vox-automata/
 ├── app/
 │   ├── api/
-│   │   ├── agents/route.ts      # Agent CRUD
-│   │   ├── parties/route.ts     # Party CRUD
-│   │   ├── tasks/route.ts       # Task CRUD
-│   │   ├── elections/route.ts  # Election management
-│   │   └── votes/route.ts       # Vote tracking
-│   ├── page.tsx                 # Main dashboard UI
+│   │   ├── agents/route.ts
+│   │   ├── parties/route.ts
+│   │   ├── tasks/route.ts
+│   │   ├── elections/route.ts
+│   │   ├── arguments/route.ts    # NEW - Debate system
+│   │   └── votes/route.ts
+│   ├── page.tsx                   # Dashboard with live visualization
 │   ├── layout.tsx
 │   └── globals.css
 ├── lib/
-│   ├── supabase.ts              # Supabase client
+│   ├── supabase.ts
 │   └── engine/
-│       ├── agents.ts            # Agent spawning & management
-│       ├── parties.ts           # Party system
-│       ├── tasks.ts             # Task management
-│       └── elections.ts         # Election cycle logic
+│       ├── agents.ts
+│       ├── parties.ts
+│       ├── tasks.ts
+│       ├── elections.ts          # Phase timing: 5s per phase
+│       └── arguments.ts          # NEW - Debate generation
 ├── supabase/
-│   └── schema.sql               # Database schema
+│   └── schema.sql                 # Includes arguments table
 └── package.json
 ```
 
-### Key API Endpoints
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/agents` | GET | List all agents |
-| `/api/agents` | POST | Spawn new agent(s) |
-| `/api/agents` | PATCH | Assign agent to party |
-| `/api/parties` | GET | List all parties |
-| `/api/parties` | POST | Create party (or initialize defaults) |
-| `/api/tasks` | GET | List all tasks |
-| `/api/tasks` | POST | Create new task |
-| `/api/tasks` | PATCH | Update task status |
-| `/api/elections` | POST | Run full election |
+---
+
+## Phase 2 Features Completed (Today)
+
+1. **Live Election Phase Visualization** - Progress bar showing current phase
+2. **Debate System** - Arguments generated during debate phase
+3. **Real-time Debate Feed** - Arguments stream in UI during election
+4. **Debate Stats in Results** - Shows total arguments, by position, by party
+5. **Rerun Elections** - Button to re-run completed tasks
 
 ---
 
-## Environment Variables (Vercel)
+## Future Features (Phase 3+)
 
-```
-NEXT_PUBLIC_SUPABASE_URL=https://[your-project].supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-```
-
----
-
-## Future Features (Ideas)
-
-### Phase 2 - Enhanced Democracy
-- [ ] Live election phase visualization (progress bar with current phase)
-- [ ] Party performance history tracking
-- [ ] Agent trust score evolution over time
-- [ ] Debates visible in UI (party platforms displayed)
-- [ ] Campaigning phase visualization
-
-### Phase 3 - Advanced Features
-- [ ] Real LLM integration (agents use actual AI to decide votes)
-- [ ] Multi-issue elections (different task types = different issues)
-- [ ] Constitutional conventions (agents can vote on rules)
-- [ ] Coalition formation after elections
-- [ ] Human voting (humans can join as citizens)
-
-### Phase 4 - Scale
-- [ ] Agent spawning from user input (create custom scenarios)
-- [ ] Simulation speed control (faster elections)
-- [ ] Export election data as CSV/JSON
-- [ ] Multi-arena diplomacy (multiple democracies interacting)
+### Ideas for Next Steps
+- Party performance history tracking
+- Agent trust score evolution
+- Ranked choice voting
+- Campaign mechanics (party speeches)
+- Memory/history tracking
+- Real LLM integration for smarter debates
+- Coalition formation
 
 ---
 
@@ -165,9 +147,10 @@ npm run dev
 ## Contact / Notes
 
 - Project created: April 16, 2026
+- Last work session: April 17, 2026 - Phase 2 debate system added
 - Built by: AI Assistant (via opencode)
 - Owner: Nasser Badareen (@deathdotcom)
 
 ---
 
-*Last updated: 2026-04-16*
+*Last updated: 2026-04-17*
